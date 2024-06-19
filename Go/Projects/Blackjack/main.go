@@ -39,7 +39,7 @@ func (card Card) getString() string {
 	case 1:
 		value = "A"
 	default:
-		//Convert to decimal rep. for other values (2-10)
+		// Convert to decimal rep. for other values (2-10)
 		value = fmt.Sprintf("%d", card.value)
 	}
 
@@ -51,23 +51,16 @@ type Deck struct {
 }
 
 func (d *Deck) dealCard() Card {
-	// Get card
-	index := uint(rand.Intn(len(d.cards)))
+	index := rand.Intn(len(d.cards))
 	card := d.cards[index]
-	// Remove the card
 	d.cards = append(d.cards[:index], d.cards[index+1:]...)
 	return card
 }
 
 func (d *Deck) create() {
-	// Create the new card
-	var card Card
-
 	for s := 0; s < 4; s++ {
-		card.suit = s
 		for c := 1; c <= 13; c++ {
-			card.value = c
-			d.cards = append(d.cards, card)
+			d.cards = append(d.cards, Card{value: c, suit: s})
 		}
 	}
 }
@@ -76,11 +69,12 @@ func (d *Deck) shuffle() {
 	rand.Shuffle(len(d.cards), func(i, j int) { d.cards[i], d.cards[j] = d.cards[j], d.cards[i] })
 }
 
-func (d Deck) getCards(playersCards []Card) (cards string) {
-	for c := range playersCards {
-		cards += playersCards[c].getString() + " "
+func (d Deck) getCards(playerCards []Card) string {
+	cards := ""
+	for _, card := range playerCards {
+		cards += card.getString() + " "
 	}
-	return
+	return cards
 }
 
 type Game struct {
@@ -90,42 +84,39 @@ type Game struct {
 }
 
 func (game *Game) dealStartingCards() {
-	// Deal 2 cards to each (player 1st!)
-	// Adds card to players hand & Removes it from deck
 	game.playerCards = append(game.playerCards, game.deck.dealCard())
 	game.playerCards = append(game.playerCards, game.deck.dealCard())
-
-	// Do the same for the dealer
 	game.dealerCards = append(game.dealerCards, game.deck.dealCard())
 	game.dealerCards = append(game.dealerCards, game.deck.dealCard())
 }
 
-func (d Deck) getHandCount(playerCards []Card) (count int) {
-	// Track Aces
+func (d Deck) getHandCount(playerCards []Card) int {
+	count := 0
 	aces := 0
 
-	for c := range playerCards {
-		if playerCards[c].value == 1 {
+	for _, card := range playerCards {
+		if card.value == 1 {
 			aces++
-			count += 1
-		} else if playerCards[c].value > 10 {
+			count++
+		} else if card.value > 10 {
 			count += 10
 		} else {
-			count += playerCards[c].value
+			count += card.value
 		}
 	}
-	// Add as many aces as possible
+
 	for aces > 0 && count+10 <= 21 {
-		count += 11
+		count += 10
 		aces--
 	}
-	return
+
+	return count
 }
 
-// Winner will be set as 0-none, 1-Player, 2-Dealer
 func (game *Game) checkGame() (int, string) {
 	playerCount := game.deck.getHandCount(game.playerCards)
 	dealerCount := game.deck.getHandCount(game.dealerCards)
+
 	if playerCount > 21 {
 		return 2, "Player Busted."
 	} else if dealerCount > 21 {
@@ -133,65 +124,86 @@ func (game *Game) checkGame() (int, string) {
 	} else if playerCount == 21 {
 		return 1, "Player got Blackjack!"
 	} else if dealerCount == 21 {
-		return 1, "Dealer got Blackjack!"
+		return 2, "Dealer got Blackjack!"
 	}
 
 	return 0, ""
 }
 
-func (game *Game) play(bet float64) (pot float64) {
-	winner := 0
-	reason := ""
-
-	pot = bet
-
-	// Make & Shuffle Deck
+func (game *Game) play(bet float64) float64 {
 	game.deck.create()
 	game.deck.shuffle()
-
-	// Deal the starting cards
 	game.dealStartingCards()
-
-	playerCards := game.deck.getCards(game.playerCards)
-	playerCount := game.deck.getHandCount(game.playerCards)
 
 	fmt.Println("Dealing the starting cards:")
 	fmt.Println("---------------------------")
-	fmt.Println("Players Cards: ", playerCards)
-	fmt.Println("Players Count: ", playerCount)
-	fmt.Println("Dealers Cards: ", game.deck.getCards(game.dealerCards[:1]), "Hidden")
+	fmt.Println("Player's Cards: ", game.deck.getCards(game.playerCards))
+	fmt.Println("Player's Count: ", game.deck.getHandCount(game.playerCards))
+	fmt.Println("Dealer's Cards: ", game.deck.getCards(game.dealerCards[:1]), "Hidden")
 	fmt.Println("---------------------------")
 
-	winner, reason = game.checkGame()
-	for winner != 0 {
-		game.playerTurn()
-		winner, reason = game.checkGame()
-		game.dealerTurn()
-		winner, reason = game.checkGame()
-
+	winner, reason := game.checkGame()
+	if winner != 0 {
 		fmt.Println(reason)
 		if winner == 1 {
-			return pot
+			return bet
 		} else {
-			return -pot
+			return -bet
 		}
 	}
 
-	return
+	for {
+		game.playerTurn()
+		winner, reason = game.checkGame()
+		if winner != 0 {
+			fmt.Println(reason)
+			if winner == 1 {
+				return bet
+			} else {
+				return -bet
+			}
+		}
+
+		game.dealerTurn()
+		winner, reason = game.checkGame()
+		if winner != 0 {
+			fmt.Println(reason)
+			if winner == 1 {
+				return bet
+			} else {
+				return -bet
+			}
+		}
+
+		playerCount := game.deck.getHandCount(game.playerCards)
+		dealerCount := game.deck.getHandCount(game.dealerCards)
+		fmt.Println("Player's Cards: ", game.deck.getCards(game.playerCards))
+		fmt.Println("Player's Count: ", playerCount)
+		fmt.Println("Dealer's Cards: ", game.deck.getCards(game.dealerCards))
+		fmt.Println("Dealer's Count: ", dealerCount)
+
+		if playerCount > dealerCount {
+			fmt.Println("Player wins!")
+			return bet
+		} else {
+			fmt.Println("Dealer wins!")
+			return -bet
+		}
+	}
 }
 
 func (game *Game) playerTurn() {
-	valid := false
-	for valid == false {
+	for {
 		fmt.Println("Your turn: (h)it or (s)tand?")
 		action := enterString()
 		if action == "h" {
 			game.playerCards = append(game.playerCards, game.deck.dealCard())
-			fmt.Println("Players Cards: ", game.deck.getCards(game.playerCards))
-			fmt.Println("Players Count: ", game.deck.getHandCount(game.playerCards))
-			valid = true
+			fmt.Println("Player's Cards: ", game.deck.getCards(game.playerCards))
+			fmt.Println("Player's Count: ", game.deck.getHandCount(game.playerCards))
+			if game.deck.getHandCount(game.playerCards) > 21 {
+				break
+			}
 		} else if action == "s" {
-			valid = true
 			break
 		} else {
 			fmt.Println("Invalid action. Please enter 'h' or 's'.")
@@ -203,15 +215,6 @@ func (game *Game) dealerTurn() {
 	for game.deck.getHandCount(game.dealerCards) < 17 {
 		game.dealerCards = append(game.dealerCards, game.deck.dealCard())
 	}
-}
-
-func (d Deck) print() {
-	var deck string
-
-	for c := 0; c < len(d.cards); c++ {
-		deck += d.cards[c].getString() + " "
-	}
-	fmt.Println(deck)
 }
 
 func enterString() string {
