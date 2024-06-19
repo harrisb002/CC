@@ -101,12 +101,23 @@ func (game *Game) dealStartingCards() {
 }
 
 func (d Deck) getHandCount(playerCards []Card) (count int) {
+	// Track Aces
+	aces := 0
+
 	for c := range playerCards {
-		if playerCards[c].value > 10 {
+		if playerCards[c].value == 1 {
+			aces++
+			count += 1
+		} else if playerCards[c].value > 10 {
 			count += 10
 		} else {
 			count += playerCards[c].value
 		}
+	}
+	// Add as many aces as possible
+	for aces > 0 && count+10 <= 21 {
+		count += 11
+		aces--
 	}
 	return
 }
@@ -143,37 +154,56 @@ func (game *Game) play(bet float64) (pot float64) {
 
 	playerCards := game.deck.getCards(game.playerCards)
 	playerCount := game.deck.getHandCount(game.playerCards)
-	dealerCards := game.deck.getCards(game.dealerCards)
-	dealerCount := game.deck.getHandCount(game.dealerCards)
 
 	fmt.Println("Dealing the starting cards:")
 	fmt.Println("---------------------------")
 	fmt.Println("Players Cards: ", playerCards)
 	fmt.Println("Players Count: ", playerCount)
+	fmt.Println("Dealers Cards: ", game.deck.getCards(game.dealerCards[:1]), "Hidden")
 	fmt.Println("---------------------------")
 
 	winner, reason = game.checkGame()
-	for winner == 0 {
-
+	for winner != 0 {
+		game.playerTurn()
 		winner, reason = game.checkGame()
+		game.dealerTurn()
+		winner, reason = game.checkGame()
+
+		fmt.Println(reason)
+		if winner == 1 {
+			return pot
+		} else {
+			return -pot
+		}
 	}
-
-	fmt.Println("Dealers Cards: ", dealerCards)
-	fmt.Println("Dealers count: ", dealerCount)
-
-	fmt.Println("Current pot: ", pot)
-	fmt.Println(reason)
 
 	return
 }
 
-// func (game *Game) playerTurn() bool {
+func (game *Game) playerTurn() {
+	valid := false
+	for valid == false {
+		fmt.Println("Your turn: (h)it or (s)tand?")
+		action := enterString()
+		if action == "h" {
+			game.playerCards = append(game.playerCards, game.deck.dealCard())
+			fmt.Println("Players Cards: ", game.deck.getCards(game.playerCards))
+			fmt.Println("Players Count: ", game.deck.getHandCount(game.playerCards))
+			valid = true
+		} else if action == "s" {
+			valid = true
+			break
+		} else {
+			fmt.Println("Invalid action. Please enter 'h' or 's'.")
+		}
+	}
+}
 
-// }
-
-// func (game *Game) dealerTurn() {
-
-// }
+func (game *Game) dealerTurn() {
+	for game.deck.getHandCount(game.dealerCards) < 17 {
+		game.dealerCards = append(game.dealerCards, game.deck.dealCard())
+	}
+}
 
 func (d Deck) print() {
 	var deck string
