@@ -129,7 +129,9 @@ func (game *Game) checkGame() (int, string) {
 }
 
 func (game *Game) play(bet float64) (pot float64) {
-	winner := false
+	winner := 0
+	reason := ""
+
 	pot = bet
 
 	// Make & Shuffle Deck
@@ -150,16 +152,17 @@ func (game *Game) play(bet float64) (pot float64) {
 	fmt.Println("Players Count: ", playerCount)
 	fmt.Println("---------------------------")
 
-	winner = game.checkGame()
-	for winner != true {
+	winner, reason = game.checkGame()
+	for winner == 0 {
 
-		winner = game.checkGame()
+		winner, reason = game.checkGame()
 	}
 
 	fmt.Println("Dealers Cards: ", dealerCards)
 	fmt.Println("Dealers count: ", dealerCount)
 
 	fmt.Println("Current pot: ", pot)
+	fmt.Println(reason)
 
 	return
 }

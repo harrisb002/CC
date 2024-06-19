@@ -1,10 +1,10 @@
-package main
+// package main
 
-import (
-	"fmt"
-	"math"
-	"strconv"
-)
+// import (
+// 	"fmt"
+// 	"math"
+// 	"strconv"
+// )
 
 // Stands for Format
 /*
